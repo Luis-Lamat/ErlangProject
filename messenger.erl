@@ -19,7 +19,6 @@ server_node() -> messenger@main.
 server(User_List) ->
     receive
         {From, logon, Name} ->
-            io:format("Hijo de tu puta madre~n", []),
             New_User_List = server_logon(From, Name, User_List),
             server(New_User_List);
         {From, logoff} ->
@@ -117,6 +116,5 @@ await_result() ->
         {messenger, stop, Why} ->
             io:format("Stopped: ~p~n", [Why]);
         {messenger, What} ->
-            io:format("Hijo de tu perra madre~n", []),
             io:format("~p~n", [What])
     end.
