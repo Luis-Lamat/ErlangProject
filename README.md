@@ -1,0 +1,3 @@
+# Event Administration App
+
+This application is to: ...
