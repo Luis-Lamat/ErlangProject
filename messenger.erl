@@ -1,5 +1,5 @@
 -module(messenger).
--export([]).
+-export([start_server/0, server/1, logon/1, logoff/0, message/2, client/2]).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% SERVER %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -19,6 +19,7 @@ server_node() -> messenger@main.
 server(User_List) ->
     receive
         {From, logon, Name} ->
+            io:format("Hijo de tu puta madre~n", []),
             New_User_List = server_logon(From, Name, User_List),
             server(New_User_List);
         {From, logoff} ->
@@ -39,8 +40,8 @@ server_logon(From, Name, User_List) ->
             From ! {messenger, stop, user_exists_in_node},
             User_List; % Just return the original user list
         false ->
-            From ! {messenger, successfully_logged_on},
-            [{From, Name} | User_List];
+            From ! {messenger, logged_on},
+            [{From, Name} | User_List]
     end.
 
 % (server_logoff) -> Logging off function
@@ -95,7 +96,7 @@ message(ToName, Message) ->
 % Passes the 'stick' to next (client) func where the rest of the messages land.
 client(Server_Node, Name) ->
     {messenger, Server_Node} ! {self(), logon, Name},
-    await_result();
+    await_result(),
     client(Server_Node).
 
 client(Server_Node) ->
@@ -116,5 +117,6 @@ await_result() ->
         {messenger, stop, Why} ->
             io:format("Stopped: ~p~n", [Why]);
         {messenger, What} ->
+            io:format("Hijo de tu perra madre~n", []),
             io:format("~p~n", [What])
     end.
