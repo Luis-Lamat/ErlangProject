@@ -5,6 +5,10 @@
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% SERVER %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+%%%
+%%% The user list has the format [{ClientPid1, Name1},{ClientPid22, Name2},...]
+%%%
+
 % starts the server, registers the name to "server"
 start_server() -> register(messenger, spawn(messenger, server, [[]])).
 
@@ -68,3 +72,49 @@ server_transfer(From, Name, To, Message, User_List) ->
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% CLIENT %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+logon(Name) ->
+    case whereis(mess_client) of
+        undefined -> register(mess_client, 
+                              spawn(messenger, client, [server_node(), Name]));
+        _ -> already_loggend_in
+    end.
+
+logoff() ->
+    mess_client ! logoff.
+
+message(ToName, Message) ->
+    case whereis(mess_client) of
+        undefined -> not_logged_on;
+        _ -> mess_client ! {message_to, ToName, Message},
+             ok
+    end.
+
+% (client) -> This is the motherflippin' client process 
+% referenced as 'mess_client' in the register function
+% Passes the 'stick' to next (client) func where the rest of the messages land.
+client(Server_Node, Name) ->
+    {messenger, Server_Node} ! {self(), logon, Name},
+    await_result();
+    client(Server_Node).
+
+client(Server_Node) ->
+    receive
+        logoff ->
+            {messenger, Server_Node} ! {self(), logoff},
+            exit(normal);
+        {message_to, ToName, Message} ->
+            {messenger, Server_Node} ! {self(), message_to, ToName, Message},
+            await_result();
+        {message_from, FromName, Message} ->
+            io:format("Message from ~p: ~p~n", [FromName, Message])
+    end,
+    client(Server_Node).
+
+await_result() ->
+    receive
+        {messenger, stop, Why} ->
+            io:format("Stopped: ~p~n", [Why]);
+        {messenger, What} ->
+            io:format("~p~n", [What])
+    end.
