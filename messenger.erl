@@ -13,7 +13,7 @@
 start_server() -> register(messenger, spawn(messenger, server, [[]])).
 
 % Denotes the node's name
-server_node() -> messenger@main.
+server_node() -> 'server@Luiss-MBP-2'.
 
 % Main request handling block
 server(User_List) ->
@@ -62,11 +62,11 @@ server_transfer(From, To, Message, User_List) ->
 
 server_transfer(From, Name, To, Message, User_List) ->
     case lists:keysearch(To, 2, User_List) of
-        false ->
-            From ! {messenger, stop, receiver_not_found};
-        {value, {ToPid, Name}} ->
+        {value, {ToPid, _}} ->
             ToPid ! {message_from, Name, Message},
-            From  ! {messenger, message_sent}
+            From  ! {messenger, message_sent};
+        _ ->
+            From ! {messenger, stop, receiver_not_found}
     end.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
