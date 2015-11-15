@@ -1,6 +1,7 @@
 -module(admin).
 -export([start_server/0, server/2, registra_asistente/2, 
          start_client/0, client_listens/1, start/0, print_attendee/1,
+         print_conference/1, imprimir_conferencias/0 ,
          imprimir_asistentes/0, elimina_asistente/1, registra_conferencia/6, elimina_conferencia/1]).
 
 %%% FORMATS:
@@ -38,6 +39,10 @@ server(Attendee_List, Conference_List) ->
         print_attendees ->
             io:format("~p~n", [Attendee_List]),
             lists:foreach(fun print_attendee/1, Attendee_List),
+            server(Attendee_List, Conference_List);
+        print_conferences ->
+            io:format("~p~n", [Conference_List]),
+            lists:foreach(fun print_conference/1, Conference_List),
             server(Attendee_List, Conference_List)
     end.
 
@@ -109,6 +114,9 @@ elimina_conferencia(Uniq_ID)->
 imprimir_asistentes() ->
     admin_client ! print_attendees.
 
+imprimir_conferencias() ->
+    admin_client ! print_conferences.
+
 start_client() ->
     case whereis(admin_client) of
         undefined -> register(admin_client, 
@@ -131,7 +139,9 @@ client_listens(Server_Node) ->
             {admin_server, Server_Node} ! {self(), delete_conference, Uniq_ID},
             await_result();
         print_attendees ->
-            {admin_server, Server_Node} ! print_attendees
+            {admin_server, Server_Node} ! print_attendees;
+        print_conferences ->
+            {admin_server, Server_Node} ! print_conferencesa
     end,
     client_listens(Server_Node).
 
@@ -175,6 +185,7 @@ start() ->
 
 
 print_attendee({Uniq_ID, Name, Num_Of_Conf}) ->
-    io:format("~-15p ~-10p Especios:~p", [Uniq_ID, Name, Num_Of_Conf]).
+    io:format("ID: ~p Nombre: ~p Conferencias Restantes: ~p ~n", [Uniq_ID, Name, Num_Of_Conf]).
 
-
+print_conference({Uniq_ID, Name, Lecturer, Hour, Attendee_Limit, Attendees_List}) ->
+    io:format("ID: ~p Nombre: ~p Conferencista: ~p Hora: ~p Limite de asistentes: ~p Lista de asistentes: ~p ~n", [Uniq_ID, Name, Lecturer, Hour, Attendee_Limit, Attendees_List]).
