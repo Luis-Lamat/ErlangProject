@@ -1,7 +1,7 @@
 -module(admin).
 -export([start_server/0, server/2, registra_asistente/2, 
          start_client/0, client_listens/1, start/0, print_attendee/1,
-         imprimir_asistentes/0, elimina_asistente/1, registra_conferencia/5]).
+         imprimir_asistentes/0, elimina_asistente/1, registra_conferencia/6, elimina_conferencia/1]).
 
 %%% FORMATS:
 %%% Attendee   -> {Uniq_ID, Name, Num_Of_Conf}
@@ -29,8 +29,11 @@ server(Attendee_List, Conference_List) ->
         {Requester, delete_attendee, Uniq_ID} ->
             New_Attendees = server_delete_attendee(Requester,Uniq_ID, Attendee_List),
             server(New_Attendees, Conference_List);
-        {Requester, register_conference, Uniq_ID, Name, Lecturer, Hour, Attendee_Limit} ->
-            New_Conference = server_register_conference(Requester, Uniq_ID, Name, Lecturer, Hour, Attendee_Limit, Conference_List),
+        {Requester, register_conference, Uniq_ID, Name, Spoke_Person, Hour, Attendee_Limit, Attendees_List} ->
+            New_Conference = server_register_conference(Requester, Uniq_ID, Name, Spoke_Person, Hour, Attendee_Limit, Attendees_List, Conference_List),
+            server(Attendee_List, New_Conference);
+        {Requester, delete_conference, Uniq_ID} ->
+            New_Conference = server_delete_conference(Requester, Uniq_ID, Conference_List),
             server(Attendee_List, New_Conference);
         print_attendees ->
             io:format("~p~n", [Attendee_List]),
@@ -64,16 +67,28 @@ server_delete_attendee(Requester, Uniq_ID, Attendee_List) ->
 
 % (server_register_conference)
 % Registers a new conference 
-server_register_conference(Requester, Uniq_ID, Name, Lecturer, Hour, Attendee_Limit, Conference_List) ->
+server_register_conference(Requester, Uniq_ID, Name, Spoke_Person, Hour, Attendee_Limit, Attendees_List, Conference_List) ->
     case lists:keymember(Uniq_ID, 1, Conference_List) of
         true ->
             Requester ! {admin, stop, conference_already_exists},
             Conference_List;
         _ ->
             Requester ! {admin, registered, Name},
-            [{Uniq_ID, Name, Lecturer, Hour, Attendee_Limit} | Conference_List]
+            [{Uniq_ID, Name, Spoke_Person, Hour, Attendee_Limit, Attendees_List} | Conference_List]
     end.
-    
+
+% (server_delete_conference )
+% Deletes a conference 
+server_delete_conference(Requester, Uniq_ID, Conference_List) ->
+    case lists:keymember(Uniq_ID, 1, Conference_List) of
+        true ->
+            lists:keydelete(Uniq_ID, 1, Conference_List),
+            Requester ! {admin, deleted, conference, Uniq_ID},
+            Conference_List;
+        _ ->
+            Requester ! {admin, stop, conference_doesnt_exist}
+    end.    
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% CLIENT %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -83,10 +98,13 @@ registra_asistente(Uniq_ID, Name) ->
     admin_client ! {register, Uniq_ID, Name}.
 
 elimina_asistente(Uniq_ID)->
-    admin_client ! {delete, Uniq_ID}.
+    admin_client ! {delete_attendee, Uniq_ID}.
 
-registra_conferencia(Uniq_ID, Name, Lecturer, Hour, Attendee_Limit) -> 
-    admin_client ! {register, Uniq_ID, Name, Lecturer, Hour, Attendee_Limit}.
+registra_conferencia(Uniq_ID, Name, Spoke_Person, Hour, Attendee_Limit, Attendees_List) -> 
+    admin_client ! {register, Uniq_ID, Name, Spoke_Person, Hour, Attendee_Limit, Attendees_List}.
+
+elimina_conferencia(Uniq_ID)->
+    admin_client ! {delete_conference, Uniq_ID}.
 
 imprimir_asistentes() ->
     admin_client ! print_attendees.
@@ -103,11 +121,14 @@ client_listens(Server_Node) ->
         {register, Uniq_ID, Name} ->
             {admin_server, Server_Node} ! {self(), register_attendee, Uniq_ID, Name},
             await_result();
-        {delete, Uniq_ID} ->
+        {delete_attendee, Uniq_ID} ->
             {admin_server, Server_Node} ! {self(), delete_attendee, Uniq_ID},
             await_result();
-        {register, Uniq_ID, Name, Lecturer, Hour, Attendee_Limit} ->
-            {admin_server, Server_Node} ! {self(), register_conference, Uniq_ID, Name, Lecturer, Hour, Attendee_Limit},
+        {register, Uniq_ID, Name, Lecturer, Hour, Attendee_Limit, Attendees_List} ->
+            {admin_server, Server_Node} ! {self(), register_conference, Uniq_ID, Name, Lecturer, Hour, Attendee_Limit, Attendees_List},
+            await_result();
+        {delete_conference, Uniq_ID} ->
+            {admin_server, Server_Node} ! {self(), delete_conference, Uniq_ID},
             await_result();
         print_attendees ->
             {admin_server, Server_Node} ! print_attendees
@@ -146,11 +167,11 @@ start() ->
     registra_asistente(14, "Luis_14"),
     registra_asistente(15, "Luis_15"),
     registra_asistente(16, "Luis_16"),
-    registra_conferencia(1, "Evento_1", "Marco_1", 3, 20),
-    registra_conferencia(2, "Evento_2", "Marco_2", 3, 20),
-    registra_conferencia(3, "Evento_3", "Marco_3", 3, 20),
-    registra_conferencia(4, "Evento_4", "Marco_4", 3, 20),
-    registra_conferencia(5, "Evento_5", "Marco_5", 3, 20).
+    registra_conferencia(1, "Evento_1", "Marco_1", 3, 20,[]),
+    registra_conferencia(2, "Evento_2", "Marco_2", 3, 20,[]),
+    registra_conferencia(3, "Evento_3", "Marco_3", 3, 20,[]),
+    registra_conferencia(4, "Evento_4", "Marco_4", 3, 20,[]),
+    registra_conferencia(5, "Evento_5", "Marco_5", 3, 20,[]).
 
 
 print_attendee({Uniq_ID, Name, Num_Of_Conf}) ->
