@@ -46,6 +46,8 @@ server(Attendee_List, Conference_List) ->
             server(Attendee_List, Conference_List)
     end.
 
+%Fixes errors
+
 % (server_register_attendee):
 % Registers an attendee
 server_register_attendee(Requester, Uniq_ID, Name, Attendee_List) ->
