@@ -14,7 +14,7 @@
 start() -> start_server(), start_client().
 
 print_attendee({Uniq_ID, Name, Num_Of_Conf}) ->
-    io:format("~-15p ~-10p Espacios:~p", [Uniq_ID, Name, Num_Of_Conf]).
+    io:format("ID: ~p Nombre: ~p Conferencias Restantes: ~p ~n", [Uniq_ID, Name, Num_Of_Conf]).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% SERVER %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
