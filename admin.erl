@@ -143,7 +143,7 @@ client_listens(Server_Node) ->
         print_attendees ->
             {admin_server, Server_Node} ! print_attendees;
         print_conferences ->
-            {admin_server, Server_Node} ! print_conferencesa
+            {admin_server, Server_Node} ! print_conferences
     end,
     client_listens(Server_Node).
 
