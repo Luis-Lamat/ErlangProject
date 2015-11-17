@@ -3,7 +3,7 @@
          registra_asistente/2, imprimir_conferencias/0, imprimir_asistentes/0,
          elimina_asistente/1, registra_conferencia/6, elimina_conferencia/1,
          asistentes_inscritos/1, lista_asistentes/0, lista_conferencias/0]).
-%inscribe_conferencia/2, desinscribe_conferencia/2
+%inscribe_conferencia/2, desinscribe_conferencia/2, conferencias_inscritas/1,
 %%% FORMATS:
 %%% Attendee   -> {Uniq_ID, Name, Num_Of_Conf}
 %%% Conference -> {Uniq_ID, Title, Spoke_Person, Hour, Limit, [Attendee]}
@@ -203,11 +203,11 @@ start() ->
     registra_asistente(14, "Luis_14"),
     registra_asistente(15, "Luis_15"),
     registra_asistente(16, "Luis_16"),
-    registra_conferencia(1, "Evento_1", "Marco_1", 3, 20,[]),
-    registra_conferencia(2, "Evento_2", "Marco_2", 3, 20,[]),
-    registra_conferencia(3, "Evento_3", "Marco_3", 3, 20,[]),
-    registra_conferencia(4, "Evento_4", "Marco_4", 3, 20,[]),
-    registra_conferencia(5, "Evento_5", "Marco_5", 3, 20,[]).
+    registra_conferencia(1, "Evento_1", "Marco_1", 8, 20,[]),
+    registra_conferencia(2, "Evento_2", "Marco_2", 8, 20,[]),
+    registra_conferencia(3, "Evento_3", "Marco_3", 10, 20,[]),
+    registra_conferencia(4, "Evento_4", "Marco_4", 10, 20,[]),
+    registra_conferencia(5, "Evento_5", "Marco_5", 16, 20,[]).
 
 
 print_attendee({Uniq_ID, Name, _}) ->
