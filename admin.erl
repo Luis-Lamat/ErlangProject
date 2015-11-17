@@ -1,9 +1,8 @@
 -module(admin).
 -export([start_server/0, server/2, start_client/0, client_listens/1, start/0,
-         print_attendee/1, print_conference/1, registra_asistente/2,
-         imprimir_conferencias/0, imprimir_asistentes/0, elimina_asistente/1,
-         registra_conferencia/6, elimina_conferencia/1, asistentes_inscritos/1,
-         lista_asistentes/0, lista_conferencias/0]).
+         registra_asistente/2, imprimir_conferencias/0, imprimir_asistentes/0,
+         elimina_asistente/1, registra_conferencia/6, elimina_conferencia/1,
+         asistentes_inscritos/1, lista_asistentes/0, lista_conferencias/0]).
 %inscribe_conferencia/2, desinscribe_conferencia/2
 %%% FORMATS:
 %%% Attendee   -> {Uniq_ID, Name, Num_Of_Conf}
@@ -30,12 +29,10 @@ server(Attendee_List, Conference_List) ->
         {Requester, delete_attendee, Uniq_ID} ->
             case lists:keymember(Uniq_ID, 1, Attendee_List) of
                 true ->
-                    proplists:delete(Uniq_ID, Attendee_List),
-                    io:format("~p~n", [Attendee_List]),
-                    lists:foreach(fun print_attendee/1, Attendee_List),
+                    New_Attendees = proplists:delete(Uniq_ID, Attendee_List),
                     Requester ! {admin, deleted, attendee, Uniq_ID},
-                    Attendee_List,
-                    server(Attendee_List, Conference_List);
+                    New_Attendees,
+                    server(New_Attendees, Conference_List);
                 _ ->
                     Requester ! {admin, stop, attendee_doesnt_exist},
                     server(Attendee_List, Conference_List)
@@ -48,8 +45,18 @@ server(Attendee_List, Conference_List) ->
                 Spoke_Person, Hour, Attendee_Limit, Attendees_List, Conference_List),
             server(Attendee_List, New_Conference);
         {Requester, delete_conference, Uniq_ID} ->
-            New_Conference = server_delete_conference(Requester, Uniq_ID, Conference_List),
-            server(Attendee_List, New_Conference);
+            case lists:keymember(Uniq_ID, 1, Conference_List) of
+                true ->
+                    New_Conferences = proplists:delete(Uniq_ID, Conference_List),
+                    Requester ! {admin, deleted, conference, Uniq_ID},
+                    New_Conferences,
+                    server(Attendee_List, New_Conferences);
+                _ ->
+                    Requester ! {admin, stop, conference_doesnt_exist},
+                    server(Attendee_List, Conference_List)
+            end;
+            %%New_Conference = server_delete_conference(Requester, Uniq_ID, Conference_List),
+            %%server(Attendee_List, New_Conference);
         print_attendees ->
             io:format("~p~n", [Attendee_List]),
             lists:foreach(fun print_attendee/1, Attendee_List),
@@ -79,18 +86,6 @@ server_register_attendee(Requester, Uniq_ID, Name, Attendee_List) ->
             [{Uniq_ID, Name, 3} | Attendee_List]
     end.
 
-% (server_delete_atendee )
-% Deletes an attendee 
-server_delete_attendee(Requester, Uniq_ID, Attendee_List) ->
-    case lists:keymember(Uniq_ID, 1, Attendee_List) of
-        true ->
-            proplists:delete(Uniq_ID, Attendee_List),
-            Requester ! {admin, deleted, attendee, Uniq_ID},
-            Attendee_List;
-        _ ->
-            Requester ! {admin, stop, attendee_doesnt_exist}
-    end.
-
 % (server_register_conference)
 % Registers a new conference 
 server_register_conference(Requester, Uniq_ID, Name, Spoke_Person, Hour,
@@ -103,18 +98,6 @@ server_register_conference(Requester, Uniq_ID, Name, Spoke_Person, Hour,
             Requester ! {admin, registered, Name},
             [{Uniq_ID, Name, Spoke_Person, Hour, Attendee_Limit, Attendees_List} | Conference_List]
     end.
-
-% (server_delete_conference )
-% Deletes a conference 
-server_delete_conference(Requester, Uniq_ID, Conference_List) ->
-    case lists:keymember(Uniq_ID, 1, Conference_List) of
-        true ->
-            lists:keydelete(Uniq_ID, 1, Conference_List),
-            Requester ! {admin, deleted, conference, Uniq_ID},
-            Conference_List;
-        _ ->
-            Requester ! {admin, stop, conference_doesnt_exist}
-    end. 
 
 % (server_find_conference_attendees)
 % Finds a conference and returns attendees
