@@ -1,9 +1,10 @@
 -module(admin).
--export([start_server/0, server/2, registra_asistente/2, 
-         start_client/0, client_listens/1, start/0, print_attendee/1,
-         print_conference/1, imprimir_conferencias/0 ,
-         imprimir_asistentes/0, elimina_asistente/1, registra_conferencia/6, elimina_conferencia/1]).
-
+-export([start_server/0, server/2, start_client/0, client_listens/1, start/0,
+         print_attendee/1, print_conference/1, registra_asistente/2,
+         imprimir_conferencias/0, imprimir_asistentes/0, elimina_asistente/1,
+         registra_conferencia/6, elimina_conferencia/1, asistentes_inscritos/1,
+         lista_asistentes/0, lista_conferencias/0]).
+%inscribe_conferencia/2, desinscribe_conferencia/2
 %%% FORMATS:
 %%% Attendee   -> {Uniq_ID, Name, Num_Of_Conf}
 %%% Conference -> {Uniq_ID, Title, Spoke_Person, Hour, Limit, [Attendee]}
@@ -27,8 +28,20 @@ server(Attendee_List, Conference_List) ->
             New_Attendees = server_register_attendee(Requester, Uniq_ID, Name, Attendee_List),
             server(New_Attendees, Conference_List);
         {Requester, delete_attendee, Uniq_ID} ->
-            New_Attendees = server_delete_attendee(Requester,Uniq_ID, Attendee_List),
-            server(New_Attendees, Conference_List);
+            case lists:keymember(Uniq_ID, 1, Attendee_List) of
+                true ->
+                    proplists:delete(Uniq_ID, Attendee_List),
+                    io:format("~p~n", [Attendee_List]),
+                    lists:foreach(fun print_attendee/1, Attendee_List),
+                    Requester ! {admin, deleted, attendee, Uniq_ID},
+                    Attendee_List,
+                    server(Attendee_List, Conference_List);
+                _ ->
+                    Requester ! {admin, stop, attendee_doesnt_exist},
+                    server(Attendee_List, Conference_List)
+            end;
+            %%New_Attendees = server_delete_attendee(Requester,Uniq_ID, Attendee_List),
+            %%server(New_Attendees, Conference_List);
         {Requester, register_conference, Uniq_ID, Name, Spoke_Person, Hour,
         Attendee_Limit, Attendees_List} ->
             New_Conference = server_register_conference(Requester, Uniq_ID, Name,
@@ -41,6 +54,11 @@ server(Attendee_List, Conference_List) ->
             io:format("~p~n", [Attendee_List]),
             lists:foreach(fun print_attendee/1, Attendee_List),
             server(Attendee_List, Conference_List);
+        %%{print_attendees, Uniq_ID} ->
+        %%    Conference_Attendees = server_find_conference_attendees(Uniq_ID, Conference_List),
+        %%    io:format("~p~n", [Conference_Attendees]),
+        %%    lists:foreach(fun print_attendee/1, Conference_Attendees),
+        %%    server(Attendee_List, Conference_List);
         print_conferences ->
             io:format("~p~n", [Conference_List]),
             lists:foreach(fun print_conference/1, Conference_List),
@@ -66,7 +84,7 @@ server_register_attendee(Requester, Uniq_ID, Name, Attendee_List) ->
 server_delete_attendee(Requester, Uniq_ID, Attendee_List) ->
     case lists:keymember(Uniq_ID, 1, Attendee_List) of
         true ->
-            lists:keydelete(Uniq_ID, 1, Attendee_List),
+            proplists:delete(Uniq_ID, Attendee_List),
             Requester ! {admin, deleted, attendee, Uniq_ID},
             Attendee_List;
         _ ->
@@ -96,7 +114,14 @@ server_delete_conference(Requester, Uniq_ID, Conference_List) ->
             Conference_List;
         _ ->
             Requester ! {admin, stop, conference_doesnt_exist}
-    end.    
+    end. 
+
+% (server_find_conference_attendees)
+% Finds a conference and returns attendees
+%%server_find_conference_attendees(Uniq_ID, Conference_List) ->
+ %%   case lists:keyfind(Uniq_ID, 1, Conference_List) of
+ %%       {Uniq_ID, Title, Spoke_Person, Hour, Limit, [Attendee]} -> [Attendee];
+ %%   end.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -120,6 +145,19 @@ imprimir_asistentes() ->
 
 imprimir_conferencias() ->
     admin_client ! print_conferences.
+
+asistentes_inscritos(Uniq_ID) ->
+    admin_client ! {print_attendees, Uniq_ID}.
+
+lista_asistentes() ->
+    admin_client ! print_attendees_with_conferences.
+
+lista_conferencias() ->
+    imprimir_conferencias().
+
+%%inscribe_conferencia()
+
+%%desinscribe_conferencia()
 
 start_client() ->
     case whereis(admin_client) of
@@ -189,10 +227,10 @@ start() ->
     registra_conferencia(5, "Evento_5", "Marco_5", 3, 20,[]).
 
 
-print_attendee({Uniq_ID, Name, Num_Of_Conf}) ->
-    io:format("ID: ~p Nombre: ~p Conferencias Restantes: ~p ~n", [Uniq_ID, Name, Num_Of_Conf]).
+print_attendee({Uniq_ID, Name, _}) ->
+    io:format("ID: ~p Nombre: ~p~n", [Uniq_ID, Name]).
 
 print_conference({Uniq_ID, Name, Lecturer, Hour, Attendee_Limit, Attendees_List}) ->
     io:format("ID: ~p Nombre: ~p Conferencista: ~p Hora: ~p Limite de asistentes:
-                ~p Lista de asistentes: ~p ~n", [Uniq_ID, Name, Lecturer, Hour,
+                ~p Lista de asistentes: ~p~n", [Uniq_ID, Name, Lecturer, Hour,
                 Attendee_Limit, Attendees_List]).
