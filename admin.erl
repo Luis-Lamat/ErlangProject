@@ -9,7 +9,6 @@
 %%% Conference -> {Uniq_ID, Title, Spoke_Person, Hour, Limit, [Attendee]}
 
 
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% SERVER %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -30,8 +29,10 @@ server(Attendee_List, Conference_List) ->
         {Requester, delete_attendee, Uniq_ID} ->
             New_Attendees = server_delete_attendee(Requester,Uniq_ID, Attendee_List),
             server(New_Attendees, Conference_List);
-        {Requester, register_conference, Uniq_ID, Name, Spoke_Person, Hour, Attendee_Limit, Attendees_List} ->
-            New_Conference = server_register_conference(Requester, Uniq_ID, Name, Spoke_Person, Hour, Attendee_Limit, Attendees_List, Conference_List),
+        {Requester, register_conference, Uniq_ID, Name, Spoke_Person, Hour,
+        Attendee_Limit, Attendees_List} ->
+            New_Conference = server_register_conference(Requester, Uniq_ID, Name,
+                Spoke_Person, Hour, Attendee_Limit, Attendees_List, Conference_List),
             server(Attendee_List, New_Conference);
         {Requester, delete_conference, Uniq_ID} ->
             New_Conference = server_delete_conference(Requester, Uniq_ID, Conference_List),
@@ -74,7 +75,8 @@ server_delete_attendee(Requester, Uniq_ID, Attendee_List) ->
 
 % (server_register_conference)
 % Registers a new conference 
-server_register_conference(Requester, Uniq_ID, Name, Spoke_Person, Hour, Attendee_Limit, Attendees_List, Conference_List) ->
+server_register_conference(Requester, Uniq_ID, Name, Spoke_Person, Hour,
+    Attendee_Limit, Attendees_List, Conference_List) ->
     case lists:keymember(Uniq_ID, 1, Conference_List) of
         true ->
             Requester ! {admin, stop, conference_already_exists},
@@ -135,7 +137,8 @@ client_listens(Server_Node) ->
             {admin_server, Server_Node} ! {self(), delete_attendee, Uniq_ID},
             await_result();
         {register, Uniq_ID, Name, Lecturer, Hour, Attendee_Limit, Attendees_List} ->
-            {admin_server, Server_Node} ! {self(), register_conference, Uniq_ID, Name, Lecturer, Hour, Attendee_Limit, Attendees_List},
+            {admin_server, Server_Node} ! {self(), register_conference, Uniq_ID, Name,
+            Lecturer, Hour, Attendee_Limit, Attendees_List},
             await_result();
         {delete_conference, Uniq_ID} ->
             {admin_server, Server_Node} ! {self(), delete_conference, Uniq_ID},
@@ -190,4 +193,6 @@ print_attendee({Uniq_ID, Name, Num_Of_Conf}) ->
     io:format("ID: ~p Nombre: ~p Conferencias Restantes: ~p ~n", [Uniq_ID, Name, Num_Of_Conf]).
 
 print_conference({Uniq_ID, Name, Lecturer, Hour, Attendee_Limit, Attendees_List}) ->
-    io:format("ID: ~p Nombre: ~p Conferencista: ~p Hora: ~p Limite de asistentes: ~p Lista de asistentes: ~p ~n", [Uniq_ID, Name, Lecturer, Hour, Attendee_Limit, Attendees_List]).
+    io:format("ID: ~p Nombre: ~p Conferencista: ~p Hora: ~p Limite de asistentes:
+                ~p Lista de asistentes: ~p ~n", [Uniq_ID, Name, Lecturer, Hour,
+                Attendee_Limit, Attendees_List]).
