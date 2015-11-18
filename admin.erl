@@ -3,7 +3,7 @@
          registra_asistente/2, imprimir_conferencias/0, imprimir_asistentes/0,
          elimina_asistente/1, registra_conferencia/6, inscribe_conferencia/2,
          elimina_conferencia/1,
-         asistentes_inscritos/1, lista_asistentes/0, lista_conferencias/0]).
+         asistentes_inscritos/1, lista_asistentes/0, lista_conferencias/0, desinscribe_conferencia/2, change_attendee_limit/3]).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% FALTA %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -146,6 +146,12 @@ server(Attendee_List, Conference_List) ->
                     Attendee_List,
                     server(Attendee_List, Conference_List)
             end
+            %% ?????
+            %New_Conference = server_delete_conference(Requester, Uniq_ID, Conference_List),
+            %server(Attendee_List, New_Conference);
+        {Requester, unsubscribe, Att_ID, Conf_Name} ->
+            {New_Attendees, New_Conferences} = server_unsubscribe_attendee(Requester, Att_ID, Conf_Name, Attendee_List, Conference_List),
+            server(New_Attendees, New_Conferences)
     end.
 
 % (server_register_attendee):
@@ -172,6 +178,27 @@ server_register_conference(Requester, Uniq_ID, Name, Spoke_Person, Hour,
             Requester ! {admin, registered, Name},
             [{Uniq_ID, Name, Spoke_Person, Hour, Attendee_Limit, Attendees_List} | Conference_List]
     end.
+
+% (server_delete_conference )
+% Deletes a conference 
+server_delete_conference(Requester, Uniq_ID, Conference_List) ->
+    case lists:keymember(Uniq_ID, 1, Conference_List) of
+        true ->
+            lists:keydelete(Uniq_ID, 1, Conference_List),
+            Requester ! {admin, deleted, conference, Uniq_ID},
+            Conference_List;
+        _ ->
+            Requester ! {admin, stop, conference_doesnt_exist}
+    end.    
+
+%
+% (server_unsubscribe_attendee)
+% Unsubscribes an attendee from the conference list provided
+server_unsubscribe_attendee(Requester, Att_ID, Conf_Name, Att_List, Conf_List) ->
+    New_Attendees = change_attendee_limit(Att_ID, Att_List, 1),
+    New_Conferences = delete_attendee_from_conference(Att_ID, Conf_Name, Conf_List),
+    {New_Attendees, New_Conferences}.
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% CLIENT %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -207,7 +234,8 @@ lista_conferencias() ->
 inscribe_conferencia(Uniq_ID_Attendee, Uniq_ID_Conference) ->
     admin_client ! {add_attendee_to_conference, Uniq_ID_Attendee, Uniq_ID_Conference}.
 
-%%desinscribe_conferencia() ->
+desinscribe_conferencia(Attendee_ID, Conference) ->
+    admin_client ! {unsubscribe, Attendee_ID, Conference}.
 
 start_client() ->
     case whereis(admin_client) of
@@ -231,6 +259,8 @@ client_listens(Server_Node) ->
         {delete_conference, Uniq_ID} ->
             {admin_server, Server_Node} ! {self(), delete_conference, Uniq_ID},
             await_result();
+        {unsubscribe, Attendee_ID, Conference_Name} ->
+            {admin_server, Server_Node} ! {self(), unsubscribe, Attendee_ID, Conference_Name};
         print_attendees ->
             {admin_server, Server_Node} ! {self(), print_attendees},
             await_result();
@@ -303,3 +333,49 @@ print_conference({Uniq_ID, Name, Lecturer, Hour, Attendee_Limit, Attendees_List}
     io:format("ID: ~p Nombre: ~p Conferencista: ~p Hora: ~p Limite de asistentes:
                 ~p Lista de asistentes: ~p~n", [Uniq_ID, Name, Lecturer, Hour,
                 Attendee_Limit, Attendees_List]).
+
+
+% 
+% (change_attendee_limit)
+% 
+% Changes the attendee event limit by some number Num.
+% @param Attendee Name
+% @param Attendee List
+% @param The number to be added to the limit (can be negative)
+% @return the changed list (unchanged if not found)
+change_attendee_limit(_, [], _) -> [];
+change_attendee_limit(Att_ID, [{ID, Name, Limit}|XS], Num) when Att_ID == ID ->
+    [{ID, Name, Limit + Num}] ++ XS;
+change_attendee_limit(Att_ID, [X|XS], Num) ->
+    [X] ++ change_attendee_limit(Att_ID, XS, Num).
+
+
+% 
+% (delete_attendee_from_conference)
+% 
+% Deletes the attendee from a given conference.
+% @param Attendee Name
+% @param Conference Name
+% @param Conference List
+% @return the list of modified conferences (unchanged if not found)
+delete_attendee_from_conference(_, _, []) -> [];
+delete_attendee_from_conference(Att_ID, Conf_Name, [{Uniq_ID, Title, Speaker, Hour, Limit, Att_List}|XS]) when Conf_Name == Title ->
+    [{Uniq_ID, Title, Speaker, Hour, Limit, (Att_List -- [Att_ID])}] ++ XS; % (--) deletes element from array
+delete_attendee_from_conference(Att_ID, Conf_Name, [X|XS]) ->
+    [X] ++ delete_attendee_from_conference(Att_ID, Conf_Name, XS).
+
+
+
+
+% 
+% (get_conference_attendees)
+% 
+% Retrieves the attendee list of a given conference name.
+% @param Conference Name
+% @param Conference List
+% @return the list of attendees (empty if not found)
+get_conference_attendees(_, []) -> [];
+get_conference_attendees(Conf_Name, [{_, Title, _,_,_, Att_List}]) when Conf_Name == Title ->
+    Att_List;
+get_conference_attendees(Conf_Name, [X|XS]) ->
+    get_conference_attendees(Conf_Name, XS).
