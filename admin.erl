@@ -3,8 +3,25 @@
          registra_asistente/2, imprimir_conferencias/0, imprimir_asistentes/0,
          elimina_asistente/1, registra_conferencia/6, elimina_conferencia/1,
          asistentes_inscritos/1, lista_asistentes/0, lista_conferencias/0]).
-%inscribe_conferencia/2, desinscribe_conferencia/2, conferencias_inscritas/1,
-%%% FORMATS:
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% FALTA %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%% inscribe_conferencia/2
+%% desinscribe_conferencia/2
+%% conferencias_inscritas/1,
+%% lista_asistentes
+
+%% una vez implementadas inscribe_conferencia y desinscribe_conferencia
+%% se podra checar elimina_asistente, elimina_conferencia y asistentes_inscritos
+
+%% Validar listas vacias
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% FORMATOS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 %%% Attendee   -> {Uniq_ID, Name, Num_Of_Conf}
 %%% Conference -> {Uniq_ID, Title, Spoke_Person, Hour, Limit, [Attendee]}
 
@@ -27,6 +44,7 @@ server(Attendee_List, Conference_List) ->
             New_Attendees = server_register_attendee(Requester, Uniq_ID, Name, Attendee_List),
             server(New_Attendees, Conference_List);
         {Requester, delete_attendee, Uniq_ID} ->
+        %% Borra attendee, falta actualizar datos
             case lists:keymember(Uniq_ID, 1, Attendee_List) of
                 true ->
                     New_Attendees = proplists:delete(Uniq_ID, Attendee_List),
@@ -37,14 +55,13 @@ server(Attendee_List, Conference_List) ->
                     Requester ! {admin, stop, attendee_doesnt_exist},
                     server(Attendee_List, Conference_List)
             end;
-            %%New_Attendees = server_delete_attendee(Requester,Uniq_ID, Attendee_List),
-            %%server(New_Attendees, Conference_List);
         {Requester, register_conference, Uniq_ID, Name, Spoke_Person, Hour,
         Attendee_Limit, Attendees_List} ->
             New_Conference = server_register_conference(Requester, Uniq_ID, Name,
                 Spoke_Person, Hour, Attendee_Limit, Attendees_List, Conference_List),
             server(Attendee_List, New_Conference);
         {Requester, delete_conference, Uniq_ID} ->
+        %% Borra conference, falta actualizar datos
             case lists:keymember(Uniq_ID, 1, Conference_List) of
                 true ->
                     New_Conferences = proplists:delete(Uniq_ID, Conference_List),
@@ -55,8 +72,6 @@ server(Attendee_List, Conference_List) ->
                     Requester ! {admin, stop, conference_doesnt_exist},
                     server(Attendee_List, Conference_List)
             end;
-            %%New_Conference = server_delete_conference(Requester, Uniq_ID, Conference_List),
-            %%server(Attendee_List, New_Conference);
         print_attendees ->
             if length(Attendee_List) =:= 0 ->
                 io:fwrite("No hay asistentes ~n", []),
@@ -66,18 +81,23 @@ server(Attendee_List, Conference_List) ->
                 lists:foreach(fun print_attendee/1, Attendee_List),
                 server(Attendee_List, Conference_List)
             end;
-        %%{print_attendees, Uniq_ID} ->
-        %%    Conference_Attendees = server_find_conference_attendees(Uniq_ID, Conference_List),
-        %%    io:format("~p~n", [Conference_Attendees]),
-        %%    lists:foreach(fun print_attendee/1, Conference_Attendees),
-        %%    server(Attendee_List, Conference_List);
+        {print_attendees, Uniq_ID} ->
+            case lists:keyfind(Uniq_ID, 1, Conference_List) of
+                {Uniq_ID, Title, Spoke_Person, Hour, Limit, [Attendee]} ->
+                    Conference_Attendees = [Attendee],
+                    io:format("~p~n", [Conference_Attendees]),
+                    lists:foreach(fun print_attendee/1, Conference_Attendees),
+                    server(Attendee_List, Conference_List);
+                true -> server(Attendee_List, Conference_List)
+            end;
         print_conferences ->
             io:format("~p~n", [Conference_List]),
             lists:foreach(fun print_conference/1, Conference_List),
+            server(Attendee_List, Conference_List);
+        print_attendees_with_conferences ->
+            io:fwrite("IMPRIME ASISTENTES CON CONFERENCIAS ~n", []),
             server(Attendee_List, Conference_List)
     end.
-
-%Fixes errors
 
 % (server_register_attendee):
 % Registers an attendee
@@ -103,14 +123,6 @@ server_register_conference(Requester, Uniq_ID, Name, Spoke_Person, Hour,
             Requester ! {admin, registered, Name},
             [{Uniq_ID, Name, Spoke_Person, Hour, Attendee_Limit, Attendees_List} | Conference_List]
     end.
-
-% (server_find_conference_attendees)
-% Finds a conference and returns attendees
-%%server_find_conference_attendees(Uniq_ID, Conference_List) ->
- %%   case lists:keyfind(Uniq_ID, 1, Conference_List) of
- %%       {Uniq_ID, Title, Spoke_Person, Hour, Limit, [Attendee]} -> [Attendee];
- %%   end.
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% CLIENT %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -143,9 +155,9 @@ lista_asistentes() ->
 lista_conferencias() ->
     imprimir_conferencias().
 
-%%inscribe_conferencia()
+%%inscribe_conferencia() ->
 
-%%desinscribe_conferencia()
+%%desinscribe_conferencia() ->
 
 start_client() ->
     case whereis(admin_client) of
