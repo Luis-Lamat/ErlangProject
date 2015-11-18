@@ -1,3 +1,13 @@
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% MATRICULAS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+%% A01191344
+%% A01191434
+%% A01191158
+%% A01139855
+
+
 -module(admin).
 -export([start_server/0, server/2, start_client/0, client_listens/1, start/0,
          registra_asistente/2, imprimir_conferencias/0, imprimir_asistentes/0,
@@ -111,7 +121,6 @@ server(Attendee_List, Conference_List) ->
                 {Uniq_ID_Att, Name_Att, Num_Of_Conf} ->
                     %% Checks attendee has conferences available
                     if Num_Of_Conf > 0 ->
-                        io:format("~p~n", [Num_Of_Conf]),
                         %% Checks conference exists
                         case lists:keyfind(Uniq_ID_Conference, 1, Conference_List) of
                             {Uniq_ID_Conf, _, _, _, _, [Attendee]} ->
@@ -129,6 +138,7 @@ server(Attendee_List, Conference_List) ->
                                         server(New_Attendees, New_Conf)
                                 end;
                             _ ->
+                                io:format("~p ~p~n", [Uniq_ID_Conference, Conference_List]),
                                 Requester ! {admin, stop, no_conference_found},
                                 server(Attendee_List, Conference_List)
                         end;
