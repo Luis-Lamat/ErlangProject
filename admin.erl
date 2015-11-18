@@ -3,7 +3,9 @@
          registra_asistente/2, imprimir_conferencias/0, imprimir_asistentes/0,
          elimina_asistente/1, registra_conferencia/6, inscribe_conferencia/2,
          elimina_conferencia/1,
-         asistentes_inscritos/1, lista_asistentes/0, lista_conferencias/0, desinscribe_conferencia/2, change_attendee_limit/3]).
+         asistentes_inscritos/1, lista_asistentes/0, lista_conferencias/0, 
+         desinscribe_conferencia/2, change_attendee_limit/3, 
+         conferencias_inscritas/1]).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% FALTA %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -153,7 +155,12 @@ server(Attendee_List, Conference_List) ->
             %server(Attendee_List, New_Conference);
         {Requester, unsubscribe, Att_ID, Conf_Name} ->
             {New_Attendees, New_Conferences} = server_unsubscribe_attendee(Requester, Att_ID, Conf_Name, Attendee_List, Conference_List),
-            server(New_Attendees, New_Conferences)
+            server(New_Attendees, New_Conferences);
+
+        {Requester, subscribed_conferences, Attendee_ID} ->
+            New_Conferences = server_subscribed_conferences(Attendee_ID, Conference_List),
+            Requester ! {admin, print, conferences, New_Conferences},
+            server(Attendee_List, Conference_List)
     end.
 
 % (server_register_attendee):
@@ -202,6 +209,23 @@ server_unsubscribe_attendee(Requester, Att_ID, Conf_Name, Att_List, Conf_List) -
     {New_Attendees, New_Conferences}.
 
 
+%
+% (server_subscribed_conferences)
+% Method to get the subscribed conferences of a user
+% @param the Attendee_ID
+% @param the Conference_List
+% @return the filtered Conference List
+server_subscribed_conferences(_, []) -> [];
+server_subscribed_conferences(Att_ID, [{Conf_ID, Title, Speaker, Hour, Limit, Att_List} | XS]) ->
+    % this filter func validates if the Att_ID is inside the conference
+    Attendee_Found = length(lists:filter(fun(E) -> E == Att_ID end, Att_List)) > 0,
+    case Attendee_Found of 
+        true ->  Tuple = [{Conf_ID, Title, Speaker, Hour, Limit, Att_List}];
+        false -> Tuple = []
+    end,
+    Tuple ++ server_subscribed_conferences(Att_ID, XS).
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% CLIENT %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -239,6 +263,9 @@ inscribe_conferencia(Uniq_ID_Attendee, Uniq_ID_Conference) ->
 desinscribe_conferencia(Attendee_ID, Conference) ->
     admin_client ! {unsubscribe, Attendee_ID, Conference}.
 
+conferencias_inscritas(Attendee_ID) ->
+    admin_client ! {subscribed_conferences, Attendee_ID}.
+
 start_client() ->
     case whereis(admin_client) of
         undefined -> register(admin_client, 
@@ -266,6 +293,9 @@ client_listens(Server_Node) ->
         print_attendees ->
             {admin_server, Server_Node} ! {self(), print_attendees},
             await_result();
+        {subscribed_conferences, Attendee_ID} ->
+            {admin_server, Server_Node} ! {self(), subscribed_conferences, Attendee_ID},
+            await_result();
         {print_attendees, Uniq_ID} ->
             {admin_server, Server_Node} ! {self(), print_attendees, Uniq_ID},
             await_result();
@@ -289,6 +319,8 @@ await_result() ->
             io:format("Stopped, reason: ~p~n", [Why_Man]);
         {admin, deleted, What, Identifer} ->
             io: format("Se borro a un ~p con Identificador ~p~n", [What, Identifer]);
+        {admin, print, Thing} ->
+            io:format("~p~n", [Thing]);
         {admin, print, What, List} ->
             io:format("~p~n", [List]),
             case What of
@@ -321,10 +353,10 @@ start() ->
     registra_asistente(14, "Luis_14"),
     registra_asistente(15, "Luis_15"),
     registra_asistente(16, "Luis_16"),
-    registra_conferencia(1, "Evento_1", "Marco_1", 8, 20,[]),
-    registra_conferencia(2, "Evento_2", "Marco_2", 8, 20,[]),
-    registra_conferencia(3, "Evento_3", "Marco_3", 10, 20,[]),
-    registra_conferencia(4, "Evento_4", "Marco_4", 10, 20,[]),
+    registra_conferencia(1, "Evento_1", "Marco_1", 8, 20,[1,2,3,4,5]),
+    registra_conferencia(2, "Evento_2", "Marco_2", 8, 20,[1,2,3]),
+    registra_conferencia(3, "Evento_3", "Marco_3", 10, 20,[1,2]),
+    registra_conferencia(4, "Evento_4", "Marco_4", 10, 20,[1]),
     registra_conferencia(5, "Evento_5", "Marco_5", 16, 20,[]).
 
 
@@ -332,9 +364,9 @@ print_attendee({Uniq_ID, Name, _}) ->
     io:format("ID: ~p Nombre: ~p~n", [Uniq_ID, Name]).
 
 print_conference({Uniq_ID, Name, Lecturer, Hour, Attendee_Limit, Attendees_List}) ->
-    io:format("ID: ~p Nombre: ~p Conferencista: ~p Hora: ~p Limite de asistentes:
-                ~p Lista de asistentes: ~p~n", [Uniq_ID, Name, Lecturer, Hour,
-                Attendee_Limit, Attendees_List]).
+    io:format("===========================================================~n",[]),
+    io:format("ID: ~p~nNombre: ~p~nConferencista: ~p~nHora: ~p~nLimite de asistentes: ~p~nLista de asistentes: ~p~n", 
+              [Uniq_ID, Name, Lecturer, Hour, Attendee_Limit, Attendees_List]).
 
 
 % 
