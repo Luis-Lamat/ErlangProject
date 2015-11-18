@@ -58,9 +58,14 @@ server(Attendee_List, Conference_List) ->
             %%New_Conference = server_delete_conference(Requester, Uniq_ID, Conference_List),
             %%server(Attendee_List, New_Conference);
         print_attendees ->
-            io:format("~p~n", [Attendee_List]),
-            lists:foreach(fun print_attendee/1, Attendee_List),
-            server(Attendee_List, Conference_List);
+            if length(Attendee_List) =:= 0 ->
+                io:fwrite("No hay asistentes ~n", []),
+                server(Attendee_List, Conference_List);
+            true -> 
+                io:format("~p~n", [Attendee_List]),
+                lists:foreach(fun print_attendee/1, Attendee_List),
+                server(Attendee_List, Conference_List)
+            end;
         %%{print_attendees, Uniq_ID} ->
         %%    Conference_Attendees = server_find_conference_attendees(Uniq_ID, Conference_List),
         %%    io:format("~p~n", [Conference_Attendees]),
