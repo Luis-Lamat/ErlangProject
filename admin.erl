@@ -114,13 +114,35 @@ server(Attendee_List, Conference_List) ->
             server(Attendee_List, Conference_List);
         {Requester, add_attendee_to_conference, Uniq_ID_Attendee, Uniq_ID_Conference} ->
             %%checks to see attendee is registered
-            case lists:keymember(Uniq_ID_Attendee, 1, Attendee_List) of
+            case lists:keyfind(Uniq_ID_Attendee, 1, Attendee_List) of
+                {Uniq_ID_Att, Name_Att, Num_Of_Conf} ->
+                    %% Checks attendee has conferences available
+                    if Num_Of_Conf > 0 ->
+                        %% Checks conference exists
+                        case lists:keyfind(Uniq_ID_Conference, 1, Conference_List) of
+                            {Uniq_ID_Conf, Title, Spoke_Person, Hour, Limit, [Attendee]} ->
+                                %% Check attendee is not already registered to that conference
+                                case lists:keymember(Uniq_ID_Attendee, 1, Attendee) of
+                                    true ->
+                                        Requester ! {admin, stop, attendee_already_exists},
+                                        Attendee,
+                                        server(Attendee_List, Conference_List);
+                                    _ ->
+                                        %%Substract 1 from Num_of_Conf from attendee
+                                        New_Attendees = change_attendee_limit(Uniq_ID_Att, Attendee_List, -1),
+                                        %%Add attendee to conference attendee list
+                                        New_Conf = add_attendee_to_conference(Uniq_ID_Att, Uniq_ID_Conf, Conference_List),
+                                        server(New_Attendees, New_Conf);
+                            true ->
+                                Requester ! {admin, stop, no_conference_found},
+                                server(Attendee_List, Conference_List)
+                        end;
+                    true ->
+                        Requester ! {admin, stop, attendee_has_full_conferences},
+                        Attendee_List,
+                        server(Attendee_List, Conference_List);
                 true ->
-                    Requester ! {admin, stop, attendee_already_exists},
-                    Attendee_List,
-                    server(Attendee_List, Conference_List);
-                _ ->
-                    Requester ! {admin, stop, attendee_already_exists},
+                    Requester ! {admin, stop, attendee_is_not_registered},
                     Attendee_List,
                     server(Attendee_List, Conference_List)
             end
