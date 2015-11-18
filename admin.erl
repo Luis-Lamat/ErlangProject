@@ -2,22 +2,15 @@
 -export([start_server/0, server/2, start_client/0, client_listens/1, start/0,
          registra_asistente/2, imprimir_conferencias/0, imprimir_asistentes/0,
          elimina_asistente/1, registra_conferencia/6, inscribe_conferencia/2,
-         elimina_conferencia/1,
-         asistentes_inscritos/1, lista_asistentes/0, lista_conferencias/0, desinscribe_conferencia/2, change_attendee_limit/3]).
+         elimina_conferencia/1, asistentes_inscritos/1, lista_asistentes/0,
+         lista_conferencias/0, desinscribe_conferencia/2, change_attendee_limit/3]).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% FALTA %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 %% inscribe_conferencia/2
-%% desinscribe_conferencia/2
-%% conferencias_inscritas/1,
 %% lista_asistentes
-
-%% una vez implementadas inscribe_conferencia y desinscribe_conferencia
-%% se podra checar elimina_asistente, elimina_conferencia y asistentes_inscritos
-
-%% Validar listas vacias
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% FORMATOS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -118,11 +111,12 @@ server(Attendee_List, Conference_List) ->
                 {Uniq_ID_Att, Name_Att, Num_Of_Conf} ->
                     %% Checks attendee has conferences available
                     if Num_Of_Conf > 0 ->
+                        io:format("~p~n", [Num_Of_Conf]),
                         %% Checks conference exists
                         case lists:keyfind(Uniq_ID_Conference, 1, Conference_List) of
                             {Uniq_ID_Conf, _, _, _, _, [Attendee]} ->
                                 %% Check attendee is not already registered to that conference
-                                case lists:keymember(Uniq_ID_Attendee, 1, Attendee) of
+                                case lists:keymember(Uniq_ID_Att, 1, Attendee) of
                                     true ->
                                         Requester ! {admin, stop, attendee_already_exists},
                                         Attendee,
@@ -134,7 +128,7 @@ server(Attendee_List, Conference_List) ->
                                         New_Conf = add_attendee_to_conf(Uniq_ID_Att, Uniq_ID_Conf, Conference_List),
                                         server(New_Attendees, New_Conf)
                                 end;
-                            true ->
+                            _ ->
                                 Requester ! {admin, stop, no_conference_found},
                                 server(Attendee_List, Conference_List)
                         end;
@@ -143,14 +137,11 @@ server(Attendee_List, Conference_List) ->
                         Attendee_List,
                         server(Attendee_List, Conference_List)
                     end;
-                true ->
+                _ ->
                     Requester ! {admin, stop, attendee_is_not_registered},
                     Attendee_List,
                     server(Attendee_List, Conference_List)
             end;
-            %% ?????
-            %New_Conference = server_delete_conference(Requester, Uniq_ID, Conference_List),
-            %server(Attendee_List, New_Conference);
         {Requester, unsubscribe, Att_ID, Conf_Name} ->
             {New_Attendees, New_Conferences} = server_unsubscribe_attendee(Requester, Att_ID, Conf_Name, Attendee_List, Conference_List),
             server(New_Attendees, New_Conferences)
@@ -179,19 +170,7 @@ server_register_conference(Requester, Uniq_ID, Name, Spoke_Person, Hour,
         _ ->
             Requester ! {admin, registered, Name},
             [{Uniq_ID, Name, Spoke_Person, Hour, Attendee_Limit, Attendees_List} | Conference_List]
-    end.
-
-% (server_delete_conference )
-% Deletes a conference 
-server_delete_conference(Requester, Uniq_ID, Conference_List) ->
-    case lists:keymember(Uniq_ID, 1, Conference_List) of
-        true ->
-            lists:keydelete(Uniq_ID, 1, Conference_List),
-            Requester ! {admin, deleted, conference, Uniq_ID},
-            Conference_List;
-        _ ->
-            Requester ! {admin, stop, conference_doesnt_exist}
-    end.    
+    end.  
 
 %
 % (server_unsubscribe_attendee)
