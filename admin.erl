@@ -42,7 +42,6 @@ server(Attendee_List, Conference_List) ->
             lists:foreach(fun print_attendee/1, Attendee_List),
             server(Attendee_List, Conference_List);
         print_conferences ->
-            io:format("~p~n", [Conference_List]),
             lists:foreach(fun print_conference/1, Conference_List),
             server(Attendee_List, Conference_List)
     end.
