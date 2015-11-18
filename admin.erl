@@ -85,7 +85,7 @@ server(Attendee_List, Conference_List) ->
             end;
         {Requester, print_attendees, Uniq_ID} ->
             case lists:keyfind(Uniq_ID, 1, Conference_List) of
-                {Uniq_ID, Title, Spoke_Person, Hour, Limit, [Attendee]} ->
+                {Uniq_ID, _, _, _, _, [Attendee]} ->
                     if length(Attendee) =:= 0 ->
                         Requester ! {admin, stop, no_attendees},
                         Attendee_List,
@@ -120,7 +120,7 @@ server(Attendee_List, Conference_List) ->
                     if Num_Of_Conf > 0 ->
                         %% Checks conference exists
                         case lists:keyfind(Uniq_ID_Conference, 1, Conference_List) of
-                            {Uniq_ID_Conf, Title, Spoke_Person, Hour, Limit, [Attendee]} ->
+                            {Uniq_ID_Conf, _, _, _, _, [Attendee]} ->
                                 %% Check attendee is not already registered to that conference
                                 case lists:keymember(Uniq_ID_Attendee, 1, Attendee) of
                                     true ->
@@ -390,5 +390,5 @@ add_attendee_to_conf(Att_ID, Conf_Name, [X|XS]) ->
 get_conference_attendees(_, []) -> [];
 get_conference_attendees(Conf_Name, [{_, Title, _,_,_, Att_List}]) when Conf_Name == Title ->
     Att_List;
-get_conference_attendees(Conf_Name, [X|XS]) ->
+get_conference_attendees(Conf_Name, [_|XS]) ->
     get_conference_attendees(Conf_Name, XS).
