@@ -131,8 +131,9 @@ server(Attendee_List, Conference_List) ->
                                         %%Substract 1 from Num_of_Conf from attendee
                                         New_Attendees = change_attendee_limit(Uniq_ID_Att, Attendee_List, -1),
                                         %%Add attendee to conference attendee list
-                                        New_Conf = add_attendee_to_conference(Uniq_ID_Att, Uniq_ID_Conf, Conference_List),
-                                        server(New_Attendees, New_Conf);
+                                        New_Conf = add_attendee_to_conf(Uniq_ID_Att, Uniq_ID_Conf, Conference_List),
+                                        server(New_Attendees, New_Conf)
+                                end;
                             true ->
                                 Requester ! {admin, stop, no_conference_found},
                                 server(Attendee_List, Conference_List)
@@ -140,12 +141,13 @@ server(Attendee_List, Conference_List) ->
                     true ->
                         Requester ! {admin, stop, attendee_has_full_conferences},
                         Attendee_List,
-                        server(Attendee_List, Conference_List);
+                        server(Attendee_List, Conference_List)
+                    end;
                 true ->
                     Requester ! {admin, stop, attendee_is_not_registered},
                     Attendee_List,
                     server(Attendee_List, Conference_List)
-            end
+            end;
             %% ?????
             %New_Conference = server_delete_conference(Requester, Uniq_ID, Conference_List),
             %server(Attendee_List, New_Conference);
@@ -364,8 +366,19 @@ delete_attendee_from_conference(Att_ID, Conf_Name, [{Uniq_ID, Title, Speaker, Ho
 delete_attendee_from_conference(Att_ID, Conf_Name, [X|XS]) ->
     [X] ++ delete_attendee_from_conference(Att_ID, Conf_Name, XS).
 
-
-
+% 
+% (add_attendee_to_conf)
+% 
+% Deletes the attendee from a given conference.
+% @param Attendee Name
+% @param Conference Name
+% @param Conference List
+% @return the list of modified conferences (unchanged if not found)
+add_attendee_to_conf(_, _, []) -> [];
+add_attendee_to_conf(Att_ID, Conf_Name, [{Uniq_ID, Title, Speaker, Hour, Limit, Att_List}|XS]) when Conf_Name == Title ->
+    [{Uniq_ID, Title, Speaker, Hour, Limit, (Att_List ++ [Att_ID])}] ++ XS;
+add_attendee_to_conf(Att_ID, Conf_Name, [X|XS]) ->
+    [X] ++ add_attendee_to_conf(Att_ID, Conf_Name, XS).
 
 % 
 % (get_conference_attendees)
