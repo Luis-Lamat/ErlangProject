@@ -1,7 +1,8 @@
 -module(admin).
 -export([start_server/0, server/2, start_client/0, client_listens/1, start/0,
          registra_asistente/2, imprimir_conferencias/0, imprimir_asistentes/0,
-         elimina_asistente/1, registra_conferencia/6, elimina_conferencia/1,
+         elimina_asistente/1, registra_conferencia/6, inscribe_conferencia/2,
+         elimina_conferencia/1,
          asistentes_inscritos/1, lista_asistentes/0, lista_conferencias/0]).
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -72,31 +73,57 @@ server(Attendee_List, Conference_List) ->
                     Requester ! {admin, stop, conference_doesnt_exist},
                     server(Attendee_List, Conference_List)
             end;
-        print_attendees ->
+        {Requester, print_attendees} ->
             if length(Attendee_List) =:= 0 ->
-                io:fwrite("No hay asistentes ~n", []),
+                Requester ! {admin, stop, no_attendees},
+                Attendee_List,
                 server(Attendee_List, Conference_List);
-            true -> 
-                io:format("~p~n", [Attendee_List]),
-                lists:foreach(fun print_attendee/1, Attendee_List),
+            true ->
+                Requester ! {admin, print, attendees, Attendee_List},
+                Attendee_List,
                 server(Attendee_List, Conference_List)
             end;
-        {print_attendees, Uniq_ID} ->
+        {Requester, print_attendees, Uniq_ID} ->
             case lists:keyfind(Uniq_ID, 1, Conference_List) of
                 {Uniq_ID, Title, Spoke_Person, Hour, Limit, [Attendee]} ->
-                    Conference_Attendees = [Attendee],
-                    io:format("~p~n", [Conference_Attendees]),
-                    lists:foreach(fun print_attendee/1, Conference_Attendees),
-                    server(Attendee_List, Conference_List);
-                true -> server(Attendee_List, Conference_List)
+                    if length(Attendee) =:= 0 ->
+                        Requester ! {admin, stop, no_attendees},
+                        Attendee_List,
+                        server(Attendee_List, Conference_List);
+                    true ->
+                        Requester ! {admin, print, attendees, Attendee},
+                        Attendee_List,
+                        server(Attendee_List, Conference_List)
+                    end;
+                true ->
+                    Requester ! {admin, stop, no_conference_found},
+                    server(Attendee_List, Conference_List)
             end;
-        print_conferences ->
-            io:format("~p~n", [Conference_List]),
-            lists:foreach(fun print_conference/1, Conference_List),
-            server(Attendee_List, Conference_List);
-        print_attendees_with_conferences ->
+        {Requester, print_conferences} ->
+            if length(Conference_List) =:= 0 ->
+                Requester ! {admin, stop, no_conferences},
+                Conference_List,
+                server(Attendee_List, Conference_List);
+            true ->
+                Requester ! {admin, print, conferences, Conference_List},
+                Conference_List,
+                server(Attendee_List, Conference_List)
+            end;
+        {Requester, print_attendees_with_conferences} ->
             io:fwrite("IMPRIME ASISTENTES CON CONFERENCIAS ~n", []),
-            server(Attendee_List, Conference_List)
+            server(Attendee_List, Conference_List);
+        {Requester, add_attendee_to_conference, Uniq_ID_Attendee, Uniq_ID_Conference} ->
+            %%checks to see attendee is registered
+            case lists:keymember(Uniq_ID_Attendee, 1, Attendee_List) of
+                true ->
+                    Requester ! {admin, stop, attendee_already_exists},
+                    Attendee_List,
+                    server(Attendee_List, Conference_List);
+                _ ->
+                    Requester ! {admin, stop, attendee_already_exists},
+                    Attendee_List,
+                    server(Attendee_List, Conference_List)
+            end
     end.
 
 % (server_register_attendee):
@@ -155,7 +182,8 @@ lista_asistentes() ->
 lista_conferencias() ->
     imprimir_conferencias().
 
-%%inscribe_conferencia() ->
+inscribe_conferencia(Uniq_ID_Attendee, Uniq_ID_Conference) ->
+    admin_client ! {add_attendee_to_conference, Uniq_ID_Attendee, Uniq_ID_Conference}.
 
 %%desinscribe_conferencia() ->
 
@@ -182,9 +210,20 @@ client_listens(Server_Node) ->
             {admin_server, Server_Node} ! {self(), delete_conference, Uniq_ID},
             await_result();
         print_attendees ->
-            {admin_server, Server_Node} ! print_attendees;
+            {admin_server, Server_Node} ! {self(), print_attendees},
+            await_result();
+        {print_attendees, Uniq_ID} ->
+            {admin_server, Server_Node} ! {self(), print_attendees, Uniq_ID},
+            await_result();
         print_conferences ->
-            {admin_server, Server_Node} ! print_conferences
+            {admin_server, Server_Node} ! {self(), print_conferences},
+            await_result();
+        print_attendees_with_conferences ->
+            {admin_server, Server_Node} ! {self(), print_attendees_with_conferences},
+            await_result();
+        {add_attendee_to_conference, Uniq_ID_Attendee, Uniq_ID_Conference} ->
+            {admin_server, Server_Node} ! {self(), add_attendee_to_conference, Uniq_ID_Attendee, Uniq_ID_Conference},
+            await_result()
     end,
     client_listens(Server_Node).
 
@@ -195,7 +234,15 @@ await_result() ->
         {admin, stop, Why_Man} ->
             io:format("Stopped, reason: ~p~n", [Why_Man]);
         {admin, deleted, What, Identifer} ->
-            io: format("Se borro a un ~p con Identificador ~p~n", [What, Identifer])
+            io: format("Se borro a un ~p con Identificador ~p~n", [What, Identifer]);
+        {admin, print, What, List} ->
+            io:format("~p~n", [List]),
+            case What of
+                attendees ->
+                    lists:foreach(fun print_attendee/1, List);
+                conferences ->
+                    lists:foreach(fun print_conference/1, List)
+            end
     end.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
